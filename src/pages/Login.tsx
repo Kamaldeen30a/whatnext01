@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Building2 } from "lucide-react";
+import logo from "@/assets/whatnext-logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -35,9 +35,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="space-y-4">
-          <div className="flex items-center justify-center gap-2">
-            <Building2 className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">WhatNext</span>
+          <div className="flex items-center justify-center">
+            <img src={logo} alt="WhatNext Investment Logo" className="h-24 w-auto" />
           </div>
           <div className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
