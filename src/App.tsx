@@ -12,6 +12,7 @@ import Sales from "./pages/Sales";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
 import LoadingScreen from "./components/LoadingScreen";
+import RouteProgress from "./components/RouteProgress";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +43,8 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-        <Routes>
+          <RouteProgress />
+          <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route
