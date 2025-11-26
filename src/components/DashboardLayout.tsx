@@ -10,8 +10,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  Building2,
 } from "lucide-react";
+import logo from "@/assets/whatnext-logo.png";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
@@ -55,8 +55,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
           <div className={cn("flex items-center gap-2", !sidebarOpen && "justify-center w-full")}>
-            <Building2 className="h-6 w-6 text-sidebar-primary" />
-            {sidebarOpen && <span className="font-bold text-sidebar-foreground">WhatNext</span>}
+            <img src={logo} alt="WhatNext Investment" className={cn("h-10 w-auto", !sidebarOpen && "h-8")} />
           </div>
           {sidebarOpen && (
             <Button
