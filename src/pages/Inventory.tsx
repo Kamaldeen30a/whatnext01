@@ -11,7 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Plus, Search, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -35,8 +52,49 @@ const sampleProducts: Product[] = [
 ];
 
 const Inventory = () => {
-  const [products] = useState<Product[]>(sampleProducts);
+  const [products, setProducts] = useState<Product[]>(sampleProducts);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "",
+    stock: "",
+    unit: "",
+    price: "",
+  });
+
+  const handleAddProduct = () => {
+    if (!formData.name || !formData.category || !formData.stock || !formData.unit || !formData.price) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const stock = parseInt(formData.stock);
+    const newProduct: Product = {
+      id: `P${String(products.length + 1).padStart(3, "0")}`,
+      name: formData.name,
+      category: formData.category,
+      stock: stock,
+      unit: formData.unit,
+      price: parseFloat(formData.price),
+      status: stock === 0 ? "out-of-stock" : stock < 200 ? "low-stock" : "in-stock",
+    };
+
+    setProducts([...products, newProduct]);
+    setFormData({ name: "", category: "", stock: "", unit: "", price: "" });
+    setIsDialogOpen(false);
+    
+    toast({
+      title: "Product Added",
+      description: `${newProduct.name} has been added to inventory`,
+    });
+  };
 
   const filteredProducts = products.filter(
     (product) =>
@@ -66,10 +124,96 @@ const Inventory = () => {
           <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
           <p className="text-muted-foreground">Manage your building materials stock</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Product
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Product</DialogTitle>
+              <DialogDescription>
+                Enter the details of the new product to add to inventory
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Product Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Premium Gypsum Board"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Gypsum">Gypsum</SelectItem>
+                    <SelectItem value="Paint Chemicals">Paint Chemicals</SelectItem>
+                    <SelectItem value="POP Fillers">POP Fillers</SelectItem>
+                    <SelectItem value="Adhesives">Adhesives</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="stock">Stock Quantity</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    placeholder="0"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="unit">Unit</Label>
+                  <Select
+                    value={formData.unit}
+                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  >
+                    <SelectTrigger id="unit">
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sheets">Sheets</SelectItem>
+                      <SelectItem value="bags">Bags</SelectItem>
+                      <SelectItem value="liters">Liters</SelectItem>
+                      <SelectItem value="tons">Tons</SelectItem>
+                      <SelectItem value="pieces">Pieces</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="price">Price (₦)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddProduct}>Add Product</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Summary Cards */}
