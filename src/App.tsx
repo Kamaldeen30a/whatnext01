@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
 import LoadingScreen from "./components/LoadingScreen";
@@ -78,7 +79,7 @@ const App = () => {
           <Route path="/logistics" element={<ProtectedRoute><DashboardLayout><div>Logistics coming soon</div></DashboardLayout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><DashboardLayout><div>Documents coming soon</div></DashboardLayout></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><div>Analytics coming soon</div></DashboardLayout></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><DashboardLayout><div>Settings coming soon</div></DashboardLayout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
