@@ -39,15 +39,47 @@ import {
   Filter,
   Download,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Product interface matching Inventory
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  unit: string;
+}
+
+// Available products from inventory
+const availableProducts: Product[] = [
+  { id: "P001", name: "Premium Gypsum Board", category: "Gypsum", price: 3500, unit: "sheets" },
+  { id: "P002", name: "Standard Gypsum Powder", category: "Gypsum", price: 2800, unit: "bags" },
+  { id: "P003", name: "Acrylic Paint Base", category: "Paint Chemicals", price: 4200, unit: "liters" },
+  { id: "P004", name: "POP Ceiling Filler", category: "POP Fillers", price: 3200, unit: "bags" },
+  { id: "P005", name: "White Cement Mix", category: "Adhesives", price: 2500, unit: "bags" },
+  { id: "P006", name: "Primer Coat Solution", category: "Paint Chemicals", price: 3800, unit: "liters" },
+  { id: "P007", name: "Decorative POP", category: "POP Fillers", price: 4500, unit: "bags" },
+  { id: "P008", name: "Industrial Gypsum", category: "Gypsum", price: 85000, unit: "tons" },
+];
+
+// Order item with product details
+interface OrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
 
 interface Sale {
   id: string;
   orderNumber: string;
   customer: string;
-  email: string;
-  items: number;
+  address: string;
+  phoneNumber: string;
+  items: OrderItem[];
   total: number;
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   paymentStatus: "paid" | "pending" | "failed";
@@ -59,9 +91,13 @@ const initialSales: Sale[] = [
     id: "1",
     orderNumber: "ORD-2024-001",
     customer: "Alice Johnson",
-    email: "alice@example.com",
-    items: 3,
-    total: 1250.00,
+    address: "123 Main Street, Lagos",
+    phoneNumber: "+234 801 234 5678",
+    items: [
+      { productId: "P001", productName: "Premium Gypsum Board", quantity: 10, unitPrice: 3500, total: 35000 },
+      { productId: "P003", productName: "Acrylic Paint Base", quantity: 5, unitPrice: 4200, total: 21000 },
+    ],
+    total: 56000,
     status: "delivered",
     paymentStatus: "paid",
     date: "2024-12-20",
@@ -70,9 +106,12 @@ const initialSales: Sale[] = [
     id: "2",
     orderNumber: "ORD-2024-002",
     customer: "Bob Smith",
-    email: "bob@example.com",
-    items: 1,
-    total: 499.99,
+    address: "45 Victoria Island, Lagos",
+    phoneNumber: "+234 802 345 6789",
+    items: [
+      { productId: "P002", productName: "Standard Gypsum Powder", quantity: 20, unitPrice: 2800, total: 56000 },
+    ],
+    total: 56000,
     status: "shipped",
     paymentStatus: "paid",
     date: "2024-12-19",
@@ -81,9 +120,14 @@ const initialSales: Sale[] = [
     id: "3",
     orderNumber: "ORD-2024-003",
     customer: "Carol Davis",
-    email: "carol@example.com",
-    items: 5,
-    total: 2150.50,
+    address: "78 Lekki Phase 1, Lagos",
+    phoneNumber: "+234 803 456 7890",
+    items: [
+      { productId: "P004", productName: "POP Ceiling Filler", quantity: 15, unitPrice: 3200, total: 48000 },
+      { productId: "P005", productName: "White Cement Mix", quantity: 10, unitPrice: 2500, total: 25000 },
+      { productId: "P006", productName: "Primer Coat Solution", quantity: 8, unitPrice: 3800, total: 30400 },
+    ],
+    total: 103400,
     status: "processing",
     paymentStatus: "paid",
     date: "2024-12-18",
@@ -92,9 +136,12 @@ const initialSales: Sale[] = [
     id: "4",
     orderNumber: "ORD-2024-004",
     customer: "David Wilson",
-    email: "david@example.com",
-    items: 2,
-    total: 875.00,
+    address: "12 Ikeja GRA, Lagos",
+    phoneNumber: "+234 804 567 8901",
+    items: [
+      { productId: "P007", productName: "Decorative POP", quantity: 5, unitPrice: 4500, total: 22500 },
+    ],
+    total: 22500,
     status: "pending",
     paymentStatus: "pending",
     date: "2024-12-17",
@@ -103,9 +150,13 @@ const initialSales: Sale[] = [
     id: "5",
     orderNumber: "ORD-2024-005",
     customer: "Emma Brown",
-    email: "emma@example.com",
-    items: 4,
-    total: 1680.00,
+    address: "33 Yaba, Lagos",
+    phoneNumber: "+234 805 678 9012",
+    items: [
+      { productId: "P001", productName: "Premium Gypsum Board", quantity: 25, unitPrice: 3500, total: 87500 },
+      { productId: "P002", productName: "Standard Gypsum Powder", quantity: 30, unitPrice: 2800, total: 84000 },
+    ],
+    total: 171500,
     status: "cancelled",
     paymentStatus: "failed",
     date: "2024-12-16",
@@ -131,18 +182,24 @@ const Sales = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  
   const [formData, setFormData] = useState({
     customer: "",
-    email: "",
-    items: "",
-    total: "",
+    address: "",
+    phoneNumber: "",
   });
+  
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [quantity, setQuantity] = useState("");
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
       sale.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sale.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sale.email.toLowerCase().includes(searchQuery.toLowerCase());
+      sale.phoneNumber.includes(searchQuery);
     const matchesStatus = statusFilter === "all" || sale.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -156,18 +213,56 @@ const Sales = () => {
       sales.length > 0
         ? sales.reduce((sum, s) => sum + s.total, 0) / sales.length
         : 0,
-    uniqueCustomers: new Set(sales.map((s) => s.email)).size,
+    uniqueCustomers: new Set(sales.map((s) => s.phoneNumber)).size,
   };
 
-  const handleAddSale = () => {
-    if (!formData.customer.trim() || !formData.email.trim() || !formData.items || !formData.total) {
-      toast.error("Please fill in all required fields");
+  const handleAddItem = () => {
+    if (!selectedProduct || !quantity || parseInt(quantity) <= 0) {
+      toast.error("Please select a product and enter a valid quantity");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address");
+    const product = availableProducts.find(p => p.id === selectedProduct);
+    if (!product) return;
+
+    const existingItemIndex = orderItems.findIndex(item => item.productId === selectedProduct);
+    
+    if (existingItemIndex >= 0) {
+      const updatedItems = [...orderItems];
+      updatedItems[existingItemIndex].quantity += parseInt(quantity);
+      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
+      setOrderItems(updatedItems);
+    } else {
+      const newItem: OrderItem = {
+        productId: product.id,
+        productName: product.name,
+        quantity: parseInt(quantity),
+        unitPrice: product.price,
+        total: parseInt(quantity) * product.price,
+      };
+      setOrderItems([...orderItems, newItem]);
+    }
+
+    setSelectedProduct("");
+    setQuantity("");
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    setOrderItems(orderItems.filter(item => item.productId !== productId));
+  };
+
+  const calculateOrderTotal = () => {
+    return orderItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const handleAddSale = () => {
+    if (!formData.customer.trim() || !formData.address.trim() || !formData.phoneNumber.trim()) {
+      toast.error("Please fill in all customer details");
+      return;
+    }
+
+    if (orderItems.length === 0) {
+      toast.error("Please add at least one product to the order");
       return;
     }
 
@@ -175,18 +270,25 @@ const Sales = () => {
       id: Date.now().toString(),
       orderNumber: `ORD-2024-${String(sales.length + 1).padStart(3, "0")}`,
       customer: formData.customer.trim(),
-      email: formData.email.trim(),
-      items: parseInt(formData.items),
-      total: parseFloat(formData.total),
+      address: formData.address.trim(),
+      phoneNumber: formData.phoneNumber.trim(),
+      items: orderItems,
+      total: calculateOrderTotal(),
       status: "pending",
       paymentStatus: "pending",
       date: new Date().toISOString().split("T")[0],
     };
 
     setSales([newSale, ...sales]);
-    setFormData({ customer: "", email: "", items: "", total: "" });
+    setFormData({ customer: "", address: "", phoneNumber: "" });
+    setOrderItems([]);
     setIsDialogOpen(false);
     toast.success("Sale order created successfully");
+  };
+
+  const handleViewSale = (sale: Sale) => {
+    setSelectedSale(sale);
+    setViewDialogOpen(true);
   };
 
   return (
@@ -205,67 +307,127 @@ const Sales = () => {
                 New Sale
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Sale</DialogTitle>
                 <DialogDescription>
-                  Add a new sales order to the system
+                  Add customer details and select products for this order
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer">Customer Name</Label>
-                  <Input
-                    id="customer"
-                    placeholder="Enter customer name"
-                    value={formData.customer}
-                    onChange={(e) =>
-                      setFormData({ ...formData, customer: e.target.value })
-                    }
-                    maxLength={100}
-                  />
+              <div className="grid gap-6 py-4">
+                {/* Customer Details */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Customer Details</h4>
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customer">Customer Name</Label>
+                      <Input
+                        id="customer"
+                        placeholder="Enter customer name"
+                        value={formData.customer}
+                        onChange={(e) =>
+                          setFormData({ ...formData, customer: e.target.value })
+                        }
+                        maxLength={100}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Input
+                        id="address"
+                        placeholder="Enter delivery address"
+                        value={formData.address}
+                        onChange={(e) =>
+                          setFormData({ ...formData, address: e.target.value })
+                        }
+                        maxLength={200}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneNumber">Phone Number</Label>
+                      <Input
+                        id="phoneNumber"
+                        placeholder="+234 800 000 0000"
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phoneNumber: e.target.value })
+                        }
+                        maxLength={20}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="customer@example.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    maxLength={255}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="items">Number of Items</Label>
+
+                {/* Product Selection */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Add Products</h4>
+                  <div className="flex gap-2">
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableProducts.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - ₦{product.price.toLocaleString()}/{product.unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
-                      id="items"
                       type="number"
                       min="1"
-                      placeholder="0"
-                      value={formData.items}
-                      onChange={(e) =>
-                        setFormData({ ...formData, items: e.target.value })
-                      }
+                      placeholder="Qty"
+                      className="w-24"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
                     />
+                    <Button type="button" onClick={handleAddItem} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="total">Total Amount ($)</Label>
-                    <Input
-                      id="total"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={formData.total}
-                      onChange={(e) =>
-                        setFormData({ ...formData, total: e.target.value })
-                      }
-                    />
-                  </div>
+
+                  {/* Order Items List */}
+                  {orderItems.length > 0 && (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product</TableHead>
+                            <TableHead className="text-right">Qty</TableHead>
+                            <TableHead className="text-right">Unit Price</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="w-10"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {orderItems.map((item) => (
+                            <TableRow key={item.productId}>
+                              <TableCell className="font-medium">{item.productName}</TableCell>
+                              <TableCell className="text-right">{item.quantity}</TableCell>
+                              <TableCell className="text-right">₦{item.unitPrice.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">₦{item.total.toLocaleString()}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => handleRemoveItem(item.productId)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow>
+                            <TableCell colSpan={3} className="font-bold text-right">Order Total:</TableCell>
+                            <TableCell className="font-bold text-right">₦{calculateOrderTotal().toLocaleString()}</TableCell>
+                            <TableCell></TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </div>
               </div>
               <DialogFooter>
@@ -287,7 +449,7 @@ const Sales = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${stats.totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                ₦{stats.totalRevenue.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">From paid orders</p>
             </CardContent>
@@ -309,7 +471,7 @@ const Sales = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${stats.avgOrderValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                ₦{stats.avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
               <p className="text-xs text-muted-foreground">Per order average</p>
             </CardContent>
@@ -370,18 +532,19 @@ const Sales = () => {
                   <TableRow>
                     <TableHead>Order</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead className="hidden md:table-cell">Items</TableHead>
+                    <TableHead className="hidden md:table-cell">Phone</TableHead>
+                    <TableHead className="hidden lg:table-cell">Items</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="hidden lg:table-cell">Payment</TableHead>
-                    <TableHead className="hidden lg:table-cell">Date</TableHead>
+                    <TableHead className="hidden xl:table-cell">Date</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No orders found
                       </TableCell>
                     </TableRow>
@@ -392,12 +555,26 @@ const Sales = () => {
                         <TableCell>
                           <div>
                             <p className="font-medium">{sale.customer}</p>
-                            <p className="text-sm text-muted-foreground">{sale.email}</p>
+                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">{sale.address}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{sale.items}</TableCell>
+                        <TableCell className="hidden md:table-cell">{sale.phoneNumber}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="space-y-1">
+                            {sale.items.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="text-sm">
+                                {item.productName} x{item.quantity}
+                              </div>
+                            ))}
+                            {sale.items.length > 2 && (
+                              <div className="text-sm text-muted-foreground">
+                                +{sale.items.length - 2} more items
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-medium">
-                          ${sale.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          ₦{sale.total.toLocaleString()}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <Badge variant="secondary" className={statusColors[sale.status]}>
@@ -409,14 +586,14 @@ const Sales = () => {
                             {sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-muted-foreground">
+                        <TableCell className="hidden xl:table-cell text-muted-foreground">
                           {new Date(sale.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => toast.info(`Viewing order ${sale.orderNumber}`)}
+                            onClick={() => handleViewSale(sale)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -429,6 +606,88 @@ const Sales = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* View Order Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Order Details - {selectedSale?.orderNumber}</DialogTitle>
+              <DialogDescription>
+                View complete order information
+              </DialogDescription>
+            </DialogHeader>
+            {selectedSale && (
+              <div className="space-y-6 py-4">
+                {/* Customer Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Customer Name</p>
+                    <p className="font-medium">{selectedSale.customer}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone Number</p>
+                    <p className="font-medium">{selectedSale.phoneNumber}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">Delivery Address</p>
+                    <p className="font-medium">{selectedSale.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Order Date</p>
+                    <p className="font-medium">{new Date(selectedSale.date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <div className="flex gap-2 mt-1">
+                      <Badge variant="secondary" className={statusColors[selectedSale.status]}>
+                        {selectedSale.status.charAt(0).toUpperCase() + selectedSale.status.slice(1)}
+                      </Badge>
+                      <Badge variant="secondary" className={paymentColors[selectedSale.paymentStatus]}>
+                        {selectedSale.paymentStatus.charAt(0).toUpperCase() + selectedSale.paymentStatus.slice(1)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide mb-3">Items Purchased</h4>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedSale.items.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{item.productName}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">₦{item.unitPrice.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">₦{item.total.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell colSpan={3} className="font-bold text-right">Order Total:</TableCell>
+                          <TableCell className="font-bold text-right">₦{selectedSale.total.toLocaleString()}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
