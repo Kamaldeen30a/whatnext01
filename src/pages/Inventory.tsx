@@ -29,30 +29,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Plus, Search, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  stock: number;
-  unit: string;
-  price: number;
-  status: "in-stock" | "low-stock" | "out-of-stock";
-}
-
-const sampleProducts: Product[] = [
-  { id: "P001", name: "Premium Gypsum Board", category: "Gypsum", stock: 450, unit: "sheets", price: 3500, status: "in-stock" },
-  { id: "P002", name: "Standard Gypsum Powder", category: "Gypsum", stock: 320, unit: "bags", price: 2800, status: "in-stock" },
-  { id: "P003", name: "Acrylic Paint Base", category: "Paint Chemicals", stock: 180, unit: "liters", price: 4200, status: "low-stock" },
-  { id: "P004", name: "POP Ceiling Filler", category: "POP Fillers", stock: 280, unit: "bags", price: 3200, status: "in-stock" },
-  { id: "P005", name: "White Cement Mix", category: "Adhesives", stock: 145, unit: "bags", price: 2500, status: "low-stock" },
-  { id: "P006", name: "Primer Coat Solution", category: "Paint Chemicals", stock: 210, unit: "liters", price: 3800, status: "in-stock" },
-  { id: "P007", name: "Decorative POP", category: "POP Fillers", stock: 95, unit: "bags", price: 4500, status: "low-stock" },
-  { id: "P008", name: "Industrial Gypsum", category: "Gypsum", stock: 0, unit: "tons", price: 85000, status: "out-of-stock" },
-];
+import { useInventory, Product } from "@/context/InventoryContext";
 
 const Inventory = () => {
-  const [products, setProducts] = useState<Product[]>(sampleProducts);
+  const { products, addProduct } = useInventory();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -75,24 +55,20 @@ const Inventory = () => {
       return;
     }
 
-    const stock = parseInt(formData.stock);
-    const newProduct: Product = {
-      id: `P${String(products.length + 1).padStart(3, "0")}`,
+    addProduct({
       name: formData.name,
       category: formData.category,
-      stock: stock,
+      stock: parseInt(formData.stock),
       unit: formData.unit,
       price: parseFloat(formData.price),
-      status: stock === 0 ? "out-of-stock" : stock < 200 ? "low-stock" : "in-stock",
-    };
+    });
 
-    setProducts([...products, newProduct]);
     setFormData({ name: "", category: "", stock: "", unit: "", price: "" });
     setIsDialogOpen(false);
     
     toast({
       title: "Product Added",
-      description: `${newProduct.name} has been added to inventory`,
+      description: `${formData.name} has been added to inventory`,
     });
   };
 
