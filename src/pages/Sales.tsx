@@ -40,6 +40,7 @@ import {
   Download,
   Eye,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -183,6 +184,7 @@ const Sales = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   
   const [formData, setFormData] = useState({
@@ -190,6 +192,17 @@ const Sales = () => {
     address: "",
     phoneNumber: "",
   });
+
+  const [editFormData, setEditFormData] = useState({
+    customer: "",
+    address: "",
+    phoneNumber: "",
+    status: "pending" as Sale["status"],
+    paymentStatus: "pending" as Sale["paymentStatus"],
+  });
+  const [editOrderItems, setEditOrderItems] = useState<OrderItem[]>([]);
+  const [editSelectedProduct, setEditSelectedProduct] = useState("");
+  const [editQuantity, setEditQuantity] = useState("");
   
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -289,6 +302,88 @@ const Sales = () => {
   const handleViewSale = (sale: Sale) => {
     setSelectedSale(sale);
     setViewDialogOpen(true);
+  };
+
+  const handleEditSale = (sale: Sale) => {
+    setSelectedSale(sale);
+    setEditFormData({
+      customer: sale.customer,
+      address: sale.address,
+      phoneNumber: sale.phoneNumber,
+      status: sale.status,
+      paymentStatus: sale.paymentStatus,
+    });
+    setEditOrderItems([...sale.items]);
+    setEditDialogOpen(true);
+  };
+
+  const handleAddEditItem = () => {
+    if (!editSelectedProduct || !editQuantity || parseInt(editQuantity) <= 0) {
+      toast.error("Please select a product and enter a valid quantity");
+      return;
+    }
+
+    const product = availableProducts.find(p => p.id === editSelectedProduct);
+    if (!product) return;
+
+    const existingItemIndex = editOrderItems.findIndex(item => item.productId === editSelectedProduct);
+    
+    if (existingItemIndex >= 0) {
+      const updatedItems = [...editOrderItems];
+      updatedItems[existingItemIndex].quantity += parseInt(editQuantity);
+      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
+      setEditOrderItems(updatedItems);
+    } else {
+      const newItem: OrderItem = {
+        productId: product.id,
+        productName: product.name,
+        quantity: parseInt(editQuantity),
+        unitPrice: product.price,
+        total: parseInt(editQuantity) * product.price,
+      };
+      setEditOrderItems([...editOrderItems, newItem]);
+    }
+
+    setEditSelectedProduct("");
+    setEditQuantity("");
+  };
+
+  const handleRemoveEditItem = (productId: string) => {
+    setEditOrderItems(editOrderItems.filter(item => item.productId !== productId));
+  };
+
+  const calculateEditOrderTotal = () => {
+    return editOrderItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedSale) return;
+
+    if (!editFormData.customer.trim() || !editFormData.address.trim() || !editFormData.phoneNumber.trim()) {
+      toast.error("Please fill in all customer details");
+      return;
+    }
+
+    if (editOrderItems.length === 0) {
+      toast.error("Please add at least one product to the order");
+      return;
+    }
+
+    const updatedSale: Sale = {
+      ...selectedSale,
+      customer: editFormData.customer.trim(),
+      address: editFormData.address.trim(),
+      phoneNumber: editFormData.phoneNumber.trim(),
+      status: editFormData.status,
+      paymentStatus: editFormData.paymentStatus,
+      items: editOrderItems,
+      total: calculateEditOrderTotal(),
+    };
+
+    setSales(sales.map(sale => sale.id === selectedSale.id ? updatedSale : sale));
+    setEditDialogOpen(false);
+    setSelectedSale(null);
+    toast.success("Order updated successfully");
   };
 
   return (
@@ -590,13 +685,22 @@ const Sales = () => {
                           {new Date(sale.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleViewSale(sale)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewSale(sale)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditSale(sale)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -685,6 +789,185 @@ const Sales = () => {
               <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
                 Close
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Order Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Order - {selectedSale?.orderNumber}</DialogTitle>
+              <DialogDescription>
+                Update order details, status, or items
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              {/* Customer Details */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Customer Details</h4>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-customer">Customer Name</Label>
+                    <Input
+                      id="edit-customer"
+                      placeholder="Enter customer name"
+                      value={editFormData.customer}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, customer: e.target.value })
+                      }
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-address">Address</Label>
+                    <Input
+                      id="edit-address"
+                      placeholder="Enter delivery address"
+                      value={editFormData.address}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, address: e.target.value })
+                      }
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phoneNumber">Phone Number</Label>
+                    <Input
+                      id="edit-phoneNumber"
+                      placeholder="+234 800 000 0000"
+                      value={editFormData.phoneNumber}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, phoneNumber: e.target.value })
+                      }
+                      maxLength={20}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Status */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Order Status</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select 
+                      value={editFormData.status} 
+                      onValueChange={(value: Sale["status"]) => 
+                        setEditFormData({ ...editFormData, status: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Status</Label>
+                    <Select 
+                      value={editFormData.paymentStatus} 
+                      onValueChange={(value: Sale["paymentStatus"]) => 
+                        setEditFormData({ ...editFormData, paymentStatus: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Selection */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Order Items</h4>
+                <div className="flex gap-2">
+                  <Select value={editSelectedProduct} onValueChange={setEditSelectedProduct}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} - ₦{product.price.toLocaleString()}/{product.unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    className="w-24"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                  />
+                  <Button type="button" onClick={handleAddEditItem} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Order Items List */}
+                {editOrderItems.length > 0 && (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {editOrderItems.map((item) => (
+                          <TableRow key={item.productId}>
+                            <TableCell className="font-medium">{item.productName}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">₦{item.unitPrice.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">₦{item.total.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => handleRemoveEditItem(item.productId)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell colSpan={3} className="font-bold text-right">Order Total:</TableCell>
+                          <TableCell className="font-bold text-right">₦{calculateEditOrderTotal().toLocaleString()}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
