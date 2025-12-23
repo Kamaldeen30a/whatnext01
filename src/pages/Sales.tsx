@@ -43,27 +43,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
-
-// Product interface matching Inventory
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  unit: string;
-}
-
-// Available products from inventory
-const availableProducts: Product[] = [
-  { id: "P001", name: "Premium Gypsum Board", category: "Gypsum", price: 3500, unit: "sheets" },
-  { id: "P002", name: "Standard Gypsum Powder", category: "Gypsum", price: 2800, unit: "bags" },
-  { id: "P003", name: "Acrylic Paint Base", category: "Paint Chemicals", price: 4200, unit: "liters" },
-  { id: "P004", name: "POP Ceiling Filler", category: "POP Fillers", price: 3200, unit: "bags" },
-  { id: "P005", name: "White Cement Mix", category: "Adhesives", price: 2500, unit: "bags" },
-  { id: "P006", name: "Primer Coat Solution", category: "Paint Chemicals", price: 3800, unit: "liters" },
-  { id: "P007", name: "Decorative POP", category: "POP Fillers", price: 4500, unit: "bags" },
-  { id: "P008", name: "Industrial Gypsum", category: "Gypsum", price: 85000, unit: "tons" },
-];
+import { useInventory } from "@/context/InventoryContext";
 
 // Order item with product details
 interface OrderItem {
@@ -179,6 +159,7 @@ const paymentColors: Record<Sale["paymentStatus"], string> = {
 };
 
 const Sales = () => {
+  const { products, reduceStock, restoreStock } = useInventory();
   const [sales, setSales] = useState<Sale[]>(initialSales);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -235,23 +216,31 @@ const Sales = () => {
       return;
     }
 
-    const product = availableProducts.find(p => p.id === selectedProduct);
+    const product = products.find(p => p.id === selectedProduct);
     if (!product) return;
+
+    // Check available stock
+    const existingQty = orderItems.find(item => item.productId === selectedProduct)?.quantity || 0;
+    const requestedQty = parseInt(quantity);
+    if (existingQty + requestedQty > product.stock) {
+      toast.error(`Insufficient stock. Only ${product.stock - existingQty} ${product.unit} available`);
+      return;
+    }
 
     const existingItemIndex = orderItems.findIndex(item => item.productId === selectedProduct);
     
     if (existingItemIndex >= 0) {
       const updatedItems = [...orderItems];
-      updatedItems[existingItemIndex].quantity += parseInt(quantity);
+      updatedItems[existingItemIndex].quantity += requestedQty;
       updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
       setOrderItems(updatedItems);
     } else {
       const newItem: OrderItem = {
         productId: product.id,
         productName: product.name,
-        quantity: parseInt(quantity),
+        quantity: requestedQty,
         unitPrice: product.price,
-        total: parseInt(quantity) * product.price,
+        total: requestedQty * product.price,
       };
       setOrderItems([...orderItems, newItem]);
     }
@@ -279,6 +268,16 @@ const Sales = () => {
       return;
     }
 
+    // Reduce stock for all items
+    const stockReduced = reduceStock(
+      orderItems.map(item => ({ productId: item.productId, quantity: item.quantity }))
+    );
+
+    if (!stockReduced) {
+      toast.error("Insufficient stock for one or more items. Please check availability.");
+      return;
+    }
+
     const newSale: Sale = {
       id: Date.now().toString(),
       orderNumber: `ORD-2024-${String(sales.length + 1).padStart(3, "0")}`,
@@ -296,7 +295,7 @@ const Sales = () => {
     setFormData({ customer: "", address: "", phoneNumber: "" });
     setOrderItems([]);
     setIsDialogOpen(false);
-    toast.success("Sale order created successfully");
+    toast.success("Sale order created successfully. Stock has been updated.");
   };
 
   const handleViewSale = (sale: Sale) => {
@@ -323,23 +322,35 @@ const Sales = () => {
       return;
     }
 
-    const product = availableProducts.find(p => p.id === editSelectedProduct);
+    const product = products.find(p => p.id === editSelectedProduct);
     if (!product) return;
+
+    // Check available stock (add back what was originally in order for this product)
+    const originalItem = selectedSale?.items.find(item => item.productId === editSelectedProduct);
+    const originalQty = originalItem?.quantity || 0;
+    const currentEditQty = editOrderItems.find(item => item.productId === editSelectedProduct)?.quantity || 0;
+    const requestedQty = parseInt(editQuantity);
+    const availableStock = product.stock + originalQty;
+    
+    if (currentEditQty + requestedQty > availableStock) {
+      toast.error(`Insufficient stock. Only ${availableStock - currentEditQty} ${product.unit} available`);
+      return;
+    }
 
     const existingItemIndex = editOrderItems.findIndex(item => item.productId === editSelectedProduct);
     
     if (existingItemIndex >= 0) {
       const updatedItems = [...editOrderItems];
-      updatedItems[existingItemIndex].quantity += parseInt(editQuantity);
+      updatedItems[existingItemIndex].quantity += requestedQty;
       updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
       setEditOrderItems(updatedItems);
     } else {
       const newItem: OrderItem = {
         productId: product.id,
         productName: product.name,
-        quantity: parseInt(editQuantity),
+        quantity: requestedQty,
         unitPrice: product.price,
-        total: parseInt(editQuantity) * product.price,
+        total: requestedQty * product.price,
       };
       setEditOrderItems([...editOrderItems, newItem]);
     }
@@ -369,6 +380,25 @@ const Sales = () => {
       return;
     }
 
+    // First restore the original stock
+    restoreStock(
+      selectedSale.items.map(item => ({ productId: item.productId, quantity: item.quantity }))
+    );
+
+    // Then reduce stock for the new items
+    const stockReduced = reduceStock(
+      editOrderItems.map(item => ({ productId: item.productId, quantity: item.quantity }))
+    );
+
+    if (!stockReduced) {
+      // If failed, restore the original order's stock reduction
+      reduceStock(
+        selectedSale.items.map(item => ({ productId: item.productId, quantity: item.quantity }))
+      );
+      toast.error("Insufficient stock for one or more items. Please check availability.");
+      return;
+    }
+
     const updatedSale: Sale = {
       ...selectedSale,
       customer: editFormData.customer.trim(),
@@ -383,7 +413,7 @@ const Sales = () => {
     setSales(sales.map(sale => sale.id === selectedSale.id ? updatedSale : sale));
     setEditDialogOpen(false);
     setSelectedSale(null);
-    toast.success("Order updated successfully");
+    toast.success("Order updated successfully. Stock has been adjusted.");
   };
 
   return (
@@ -462,9 +492,9 @@ const Sales = () => {
                         <SelectValue placeholder="Select product" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableProducts.map((product) => (
+                        {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name} - ₦{product.price.toLocaleString()}/{product.unit}
+                            {product.name} - ₦{product.price.toLocaleString()}/{product.unit} ({product.stock} available)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -900,9 +930,9 @@ const Sales = () => {
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableProducts.map((product) => (
+                      {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} - ₦{product.price.toLocaleString()}/{product.unit}
+                          {product.name} - ₦{product.price.toLocaleString()}/{product.unit} ({product.stock} available)
                         </SelectItem>
                       ))}
                     </SelectContent>

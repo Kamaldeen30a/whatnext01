@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
 import LoadingScreen from "./components/LoadingScreen";
 import RouteProgress from "./components/RouteProgress";
+import { InventoryProvider } from "./context/InventoryContext";
 
 const queryClient = new QueryClient();
 
@@ -40,52 +41,54 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <RouteProgress />
-          <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Dashboard />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Inventory />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/sales"
-            element={
-              <ProtectedRoute>
-                <Sales />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/logistics" element={<ProtectedRoute><DashboardLayout><div>Logistics coming soon</div></DashboardLayout></ProtectedRoute>} />
-          <Route path="/documents" element={<ProtectedRoute><DashboardLayout><div>Documents coming soon</div></DashboardLayout></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><div>Analytics coming soon</div></DashboardLayout></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+      <InventoryProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <RouteProgress />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Inventory />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/sales"
+                element={
+                  <ProtectedRoute>
+                    <Sales />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/logistics" element={<ProtectedRoute><DashboardLayout><div>Logistics coming soon</div></DashboardLayout></ProtectedRoute>} />
+              <Route path="/documents" element={<ProtectedRoute><DashboardLayout><div>Documents coming soon</div></DashboardLayout></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><div>Analytics coming soon</div></DashboardLayout></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </InventoryProvider>
+    </QueryClientProvider>
   );
 };
 
