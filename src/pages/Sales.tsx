@@ -184,9 +184,11 @@ const Sales = () => {
   const [editOrderItems, setEditOrderItems] = useState<OrderItem[]>([]);
   const [editSelectedProduct, setEditSelectedProduct] = useState("");
   const [editQuantity, setEditQuantity] = useState("");
+  const [editUnitPrice, setEditUnitPrice] = useState("");
   
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
   const filteredSales = sales.filter((sale) => {
@@ -216,6 +218,12 @@ const Sales = () => {
       return;
     }
 
+    const priceValue = parseFloat(unitPrice);
+    if (!unitPrice || isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+
     const product = products.find(p => p.id === selectedProduct);
     if (!product) return;
 
@@ -232,21 +240,23 @@ const Sales = () => {
     if (existingItemIndex >= 0) {
       const updatedItems = [...orderItems];
       updatedItems[existingItemIndex].quantity += requestedQty;
-      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
+      updatedItems[existingItemIndex].unitPrice = priceValue;
+      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * priceValue;
       setOrderItems(updatedItems);
     } else {
       const newItem: OrderItem = {
         productId: product.id,
         productName: product.name,
         quantity: requestedQty,
-        unitPrice: product.price,
-        total: requestedQty * product.price,
+        unitPrice: priceValue,
+        total: requestedQty * priceValue,
       };
       setOrderItems([...orderItems, newItem]);
     }
 
     setSelectedProduct("");
     setQuantity("");
+    setUnitPrice("");
   };
 
   const handleRemoveItem = (productId: string) => {
@@ -322,6 +332,12 @@ const Sales = () => {
       return;
     }
 
+    const priceValue = parseFloat(editUnitPrice);
+    if (!editUnitPrice || isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+
     const product = products.find(p => p.id === editSelectedProduct);
     if (!product) return;
 
@@ -342,21 +358,23 @@ const Sales = () => {
     if (existingItemIndex >= 0) {
       const updatedItems = [...editOrderItems];
       updatedItems[existingItemIndex].quantity += requestedQty;
-      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * product.price;
+      updatedItems[existingItemIndex].unitPrice = priceValue;
+      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].quantity * priceValue;
       setEditOrderItems(updatedItems);
     } else {
       const newItem: OrderItem = {
         productId: product.id,
         productName: product.name,
         quantity: requestedQty,
-        unitPrice: product.price,
-        total: requestedQty * product.price,
+        unitPrice: priceValue,
+        total: requestedQty * priceValue,
       };
       setEditOrderItems([...editOrderItems, newItem]);
     }
 
     setEditSelectedProduct("");
     setEditQuantity("");
+    setEditUnitPrice("");
   };
 
   const handleRemoveEditItem = (productId: string) => {
@@ -486,15 +504,15 @@ const Sales = () => {
                 {/* Product Selection */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Add Products</h4>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className="flex-1 min-w-[200px]">
                         <SelectValue placeholder="Select product" />
                       </SelectTrigger>
                       <SelectContent>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name} - ₦{product.price.toLocaleString()}/{product.unit} ({product.stock} available)
+                            {product.name} ({product.stock} {product.unit} available)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -503,9 +521,18 @@ const Sales = () => {
                       type="number"
                       min="1"
                       placeholder="Qty"
-                      className="w-24"
+                      className="w-20"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Unit Price (₦)"
+                      className="w-32"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value)}
                     />
                     <Button type="button" onClick={handleAddItem} size="icon">
                       <Plus className="h-4 w-4" />
@@ -924,15 +951,15 @@ const Sales = () => {
               {/* Product Selection */}
               <div className="space-y-4">
                 <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Order Items</h4>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Select value={editSelectedProduct} onValueChange={setEditSelectedProduct}>
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="flex-1 min-w-[200px]">
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} - ₦{product.price.toLocaleString()}/{product.unit} ({product.stock} available)
+                          {product.name} ({product.stock} {product.unit} available)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -941,9 +968,18 @@ const Sales = () => {
                     type="number"
                     min="1"
                     placeholder="Qty"
-                    className="w-24"
+                    className="w-20"
                     value={editQuantity}
                     onChange={(e) => setEditQuantity(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Unit Price (₦)"
+                    className="w-32"
+                    value={editUnitPrice}
+                    onChange={(e) => setEditUnitPrice(e.target.value)}
                   />
                   <Button type="button" onClick={handleAddEditItem} size="icon">
                     <Plus className="h-4 w-4" />
