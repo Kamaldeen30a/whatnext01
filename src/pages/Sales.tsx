@@ -504,39 +504,50 @@ const Sales = () => {
                 {/* Product Selection */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Add Products</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                      <SelectTrigger className="flex-1 min-w-[200px]">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} ({product.stock} {product.unit} available)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      min="1"
-                      placeholder="Qty"
-                      className="w-20"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Unit Price (₦)"
-                      className="w-32"
-                      value={unitPrice}
-                      onChange={(e) => setUnitPrice(e.target.value)}
-                    />
-                    <Button type="button" onClick={handleAddItem} size="icon">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                  <div className="grid gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Select value={selectedProduct} onValueChange={(value) => {
+                        setSelectedProduct(value);
+                        // Clear price when changing product
+                        setUnitPrice("");
+                      }}>
+                        <SelectTrigger className="flex-1 min-w-[200px]">
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name} ({product.stock} {product.unit} available)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="Qty"
+                        className="w-20"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Price (₦)"
+                        className="w-28"
+                        value={unitPrice}
+                        onChange={(e) => setUnitPrice(e.target.value)}
+                      />
+                      <Button type="button" onClick={handleAddItem} size="icon">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {selectedProduct && !unitPrice && (
+                      <p className="text-sm text-muted-foreground">
+                        Enter the unit price for this product
+                      </p>
+                    )}
                   </div>
 
                   {/* Order Items List */}
