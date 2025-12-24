@@ -443,14 +443,14 @@ const Sales = () => {
             <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
             <p className="text-muted-foreground">Track and manage your sales orders</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
                 New Sale
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Create New Sale</DialogTitle>
                 <DialogDescription>
@@ -851,8 +851,8 @@ const Sales = () => {
         </Dialog>
 
         {/* Edit Order Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen} modal>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Edit Order - {selectedSale?.orderNumber}</DialogTitle>
               <DialogDescription>
