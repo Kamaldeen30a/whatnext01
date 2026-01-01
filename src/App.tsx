@@ -16,6 +16,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import LoadingScreen from "./components/LoadingScreen";
 import RouteProgress from "./components/RouteProgress";
 import { InventoryProvider } from "./context/InventoryContext";
+import { SalesProvider } from "./context/SalesContext";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +44,8 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <InventoryProvider>
-        <TooltipProvider>
+        <SalesProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -87,7 +89,8 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
+          </TooltipProvider>
+        </SalesProvider>
       </InventoryProvider>
     </QueryClientProvider>
   );

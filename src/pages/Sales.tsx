@@ -44,105 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useInventory } from "@/context/InventoryContext";
-
-// Order item with product details
-interface OrderItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
-
-interface Sale {
-  id: string;
-  orderNumber: string;
-  customer: string;
-  address: string;
-  phoneNumber: string;
-  items: OrderItem[];
-  total: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
-  paymentStatus: "paid" | "pending" | "failed";
-  date: string;
-}
-
-const initialSales: Sale[] = [
-  {
-    id: "1",
-    orderNumber: "ORD-2024-001",
-    customer: "Alice Johnson",
-    address: "123 Main Street, Lagos",
-    phoneNumber: "+234 801 234 5678",
-    items: [
-      { productId: "P001", productName: "Premium Gypsum Board", quantity: 10, unitPrice: 3500, total: 35000 },
-      { productId: "P003", productName: "Acrylic Paint Base", quantity: 5, unitPrice: 4200, total: 21000 },
-    ],
-    total: 56000,
-    status: "delivered",
-    paymentStatus: "paid",
-    date: "2024-12-20",
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-2024-002",
-    customer: "Bob Smith",
-    address: "45 Victoria Island, Lagos",
-    phoneNumber: "+234 802 345 6789",
-    items: [
-      { productId: "P002", productName: "Standard Gypsum Powder", quantity: 20, unitPrice: 2800, total: 56000 },
-    ],
-    total: 56000,
-    status: "shipped",
-    paymentStatus: "paid",
-    date: "2024-12-19",
-  },
-  {
-    id: "3",
-    orderNumber: "ORD-2024-003",
-    customer: "Carol Davis",
-    address: "78 Lekki Phase 1, Lagos",
-    phoneNumber: "+234 803 456 7890",
-    items: [
-      { productId: "P004", productName: "POP Ceiling Filler", quantity: 15, unitPrice: 3200, total: 48000 },
-      { productId: "P005", productName: "White Cement Mix", quantity: 10, unitPrice: 2500, total: 25000 },
-      { productId: "P006", productName: "Primer Coat Solution", quantity: 8, unitPrice: 3800, total: 30400 },
-    ],
-    total: 103400,
-    status: "processing",
-    paymentStatus: "paid",
-    date: "2024-12-18",
-  },
-  {
-    id: "4",
-    orderNumber: "ORD-2024-004",
-    customer: "David Wilson",
-    address: "12 Ikeja GRA, Lagos",
-    phoneNumber: "+234 804 567 8901",
-    items: [
-      { productId: "P007", productName: "Decorative POP", quantity: 5, unitPrice: 4500, total: 22500 },
-    ],
-    total: 22500,
-    status: "pending",
-    paymentStatus: "pending",
-    date: "2024-12-17",
-  },
-  {
-    id: "5",
-    orderNumber: "ORD-2024-005",
-    customer: "Emma Brown",
-    address: "33 Yaba, Lagos",
-    phoneNumber: "+234 805 678 9012",
-    items: [
-      { productId: "P001", productName: "Premium Gypsum Board", quantity: 25, unitPrice: 3500, total: 87500 },
-      { productId: "P002", productName: "Standard Gypsum Powder", quantity: 30, unitPrice: 2800, total: 84000 },
-    ],
-    total: 171500,
-    status: "cancelled",
-    paymentStatus: "failed",
-    date: "2024-12-16",
-  },
-];
+import { useSales, Sale, OrderItem } from "@/context/SalesContext";
 
 const statusColors: Record<Sale["status"], string> = {
   pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
@@ -160,7 +62,7 @@ const paymentColors: Record<Sale["paymentStatus"], string> = {
 
 const Sales = () => {
   const { products, reduceStock, restoreStock } = useInventory();
-  const [sales, setSales] = useState<Sale[]>(initialSales);
+  const { sales, addSale, updateSale } = useSales();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -288,9 +190,7 @@ const Sales = () => {
       return;
     }
 
-    const newSale: Sale = {
-      id: Date.now().toString(),
-      orderNumber: `ORD-2024-${String(sales.length + 1).padStart(3, "0")}`,
+    addSale({
       customer: formData.customer.trim(),
       address: formData.address.trim(),
       phoneNumber: formData.phoneNumber.trim(),
@@ -299,9 +199,8 @@ const Sales = () => {
       status: "pending",
       paymentStatus: "pending",
       date: new Date().toISOString().split("T")[0],
-    };
+    });
 
-    setSales([newSale, ...sales]);
     setFormData({ customer: "", address: "", phoneNumber: "" });
     setOrderItems([]);
     setIsDialogOpen(false);
@@ -417,8 +316,7 @@ const Sales = () => {
       return;
     }
 
-    const updatedSale: Sale = {
-      ...selectedSale,
+    updateSale(selectedSale.id, {
       customer: editFormData.customer.trim(),
       address: editFormData.address.trim(),
       phoneNumber: editFormData.phoneNumber.trim(),
@@ -426,9 +324,8 @@ const Sales = () => {
       paymentStatus: editFormData.paymentStatus,
       items: editOrderItems,
       total: calculateEditOrderTotal(),
-    };
+    });
 
-    setSales(sales.map(sale => sale.id === selectedSale.id ? updatedSale : sale));
     setEditDialogOpen(false);
     setSelectedSale(null);
     toast.success("Order updated successfully. Stock has been adjusted.");
