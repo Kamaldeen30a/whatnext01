@@ -1,9 +1,22 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Receipt,
   PiggyBank,
@@ -11,6 +24,10 @@ import {
   ArrowDownRight,
   CreditCard,
   Wallet,
+  CalendarIcon,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   LineChart,
@@ -29,143 +46,318 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { format, subDays, subMonths, startOfMonth, endOfMonth, parseISO, isWithinInterval } from "date-fns";
+import { cn } from "@/lib/utils";
+import { useSales } from "@/context/SalesContext";
+import { exportToCSV, exportToPDF, formatCurrencyShort } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
-// Monthly financial data
-const monthlyData = [
-  { month: "Jan", revenue: 4500000, expenses: 2800000, profit: 1700000 },
-  { month: "Feb", revenue: 5200000, expenses: 3100000, profit: 2100000 },
-  { month: "Mar", revenue: 4800000, expenses: 2900000, profit: 1900000 },
-  { month: "Apr", revenue: 6100000, expenses: 3500000, profit: 2600000 },
-  { month: "May", revenue: 5900000, expenses: 3300000, profit: 2600000 },
-  { month: "Jun", revenue: 7200000, expenses: 4000000, profit: 3200000 },
-  { month: "Jul", revenue: 6800000, expenses: 3800000, profit: 3000000 },
-  { month: "Aug", revenue: 7500000, expenses: 4200000, profit: 3300000 },
-  { month: "Sep", revenue: 8100000, expenses: 4500000, profit: 3600000 },
-  { month: "Oct", revenue: 7900000, expenses: 4400000, profit: 3500000 },
-  { month: "Nov", revenue: 8500000, expenses: 4700000, profit: 3800000 },
-  { month: "Dec", revenue: 9200000, expenses: 5100000, profit: 4100000 },
+// Expense ratio (estimated as percentage of revenue)
+const EXPENSE_RATIO = 0.55;
+
+// Expense breakdown percentages
+const expenseCategories = [
+  { name: "Raw Materials", percentage: 0.41, color: "hsl(var(--primary))" },
+  { name: "Logistics", percentage: 0.18, color: "hsl(var(--accent))" },
+  { name: "Salaries", percentage: 0.21, color: "hsl(var(--success))" },
+  { name: "Utilities", percentage: 0.07, color: "hsl(var(--warning))" },
+  { name: "Marketing", percentage: 0.06, color: "hsl(var(--destructive))" },
+  { name: "Other", percentage: 0.07, color: "hsl(var(--muted-foreground))" },
 ];
-
-// Yearly comparison data
-const yearlyData = [
-  { year: "2021", revenue: 45000000, expenses: 28000000, profit: 17000000 },
-  { year: "2022", revenue: 58000000, expenses: 34000000, profit: 24000000 },
-  { year: "2023", revenue: 72000000, expenses: 41000000, profit: 31000000 },
-  { year: "2024", revenue: 81700000, expenses: 45300000, profit: 36400000 },
-];
-
-// Expense breakdown
-const expenseBreakdown = [
-  { name: "Raw Materials", value: 18500000, color: "hsl(var(--primary))" },
-  { name: "Logistics", value: 8200000, color: "hsl(var(--accent))" },
-  { name: "Salaries", value: 9500000, color: "hsl(var(--success))" },
-  { name: "Utilities", value: 3200000, color: "hsl(var(--warning))" },
-  { name: "Marketing", value: 2800000, color: "hsl(var(--destructive))" },
-  { name: "Other", value: 3100000, color: "hsl(var(--muted-foreground))" },
-];
-
-// Accounts receivable/payable
-const accountsReceivable = [
-  { customer: "ABC Construction Ltd", amount: 2500000, dueDate: "2024-02-15", status: "overdue" },
-  { customer: "BuildRight Nigeria", amount: 1800000, dueDate: "2024-02-28", status: "pending" },
-  { customer: "Lagos Interiors", amount: 950000, dueDate: "2024-03-05", status: "pending" },
-  { customer: "Delta Builders", amount: 3200000, dueDate: "2024-03-15", status: "pending" },
-];
-
-const accountsPayable = [
-  { vendor: "Gypsum Suppliers Co.", amount: 1200000, dueDate: "2024-02-10", status: "overdue" },
-  { vendor: "Chemical Industries Ltd", amount: 850000, dueDate: "2024-02-20", status: "pending" },
-  { vendor: "Transport Services", amount: 450000, dueDate: "2024-02-25", status: "pending" },
-];
-
-const formatCurrency = (value: number) => {
-  if (value >= 1000000) {
-    return `₦${(value / 1000000).toFixed(1)}M`;
-  }
-  return `₦${(value / 1000).toFixed(0)}K`;
-};
 
 const Analytics = () => {
-  const totalRevenue = monthlyData.reduce((sum, m) => sum + m.revenue, 0);
-  const totalExpenses = monthlyData.reduce((sum, m) => sum + m.expenses, 0);
-  const totalProfit = totalRevenue - totalExpenses;
-  const profitMargin = ((totalProfit / totalRevenue) * 100).toFixed(1);
+  const { sales } = useSales();
+  
+  // Date range state
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+    from: subMonths(new Date(), 3),
+    to: new Date(),
+  });
 
-  const totalReceivable = accountsReceivable.reduce((sum, a) => sum + a.amount, 0);
-  const totalPayable = accountsPayable.reduce((sum, a) => sum + a.amount, 0);
+  // Filter sales by date range
+  const filteredSales = useMemo(() => {
+    return sales.filter((sale) => {
+      const saleDate = parseISO(sale.date);
+      return isWithinInterval(saleDate, { start: dateRange.from, end: dateRange.to });
+    });
+  }, [sales, dateRange]);
+
+  // Calculate metrics from real sales data
+  const metrics = useMemo(() => {
+    const paidSales = filteredSales.filter((s) => s.paymentStatus === "paid" && s.status !== "cancelled");
+    const totalRevenue = paidSales.reduce((sum, s) => sum + s.total, 0);
+    const totalExpenses = totalRevenue * EXPENSE_RATIO;
+    const totalProfit = totalRevenue - totalExpenses;
+    const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : "0";
+
+    // Receivables (pending payments)
+    const receivables = filteredSales
+      .filter((s) => s.paymentStatus === "pending" && s.status !== "cancelled")
+      .reduce((sum, s) => sum + s.total, 0);
+
+    return {
+      totalRevenue,
+      totalExpenses,
+      totalProfit,
+      profitMargin,
+      receivables,
+      totalOrders: filteredSales.length,
+      paidOrders: paidSales.length,
+    };
+  }, [filteredSales]);
+
+  // Generate monthly data from sales
+  const monthlyData = useMemo(() => {
+    const monthMap = new Map<string, { revenue: number; count: number }>();
+
+    filteredSales
+      .filter((s) => s.paymentStatus === "paid" && s.status !== "cancelled")
+      .forEach((sale) => {
+        const month = format(parseISO(sale.date), "MMM yyyy");
+        const existing = monthMap.get(month) || { revenue: 0, count: 0 };
+        monthMap.set(month, {
+          revenue: existing.revenue + sale.total,
+          count: existing.count + 1,
+        });
+      });
+
+    return Array.from(monthMap.entries())
+      .map(([month, data]) => ({
+        month: month.split(" ")[0], // Just the month name
+        fullMonth: month,
+        revenue: data.revenue,
+        expenses: data.revenue * EXPENSE_RATIO,
+        profit: data.revenue * (1 - EXPENSE_RATIO),
+      }))
+      .sort((a, b) => new Date(a.fullMonth).getTime() - new Date(b.fullMonth).getTime());
+  }, [filteredSales]);
+
+  // Expense breakdown based on total expenses
+  const expenseBreakdown = useMemo(() => {
+    return expenseCategories.map((cat) => ({
+      ...cat,
+      value: metrics.totalExpenses * cat.percentage,
+    }));
+  }, [metrics.totalExpenses]);
+
+  // Top customers
+  const topCustomers = useMemo(() => {
+    const customerMap = new Map<string, { total: number; orders: number }>();
+    
+    filteredSales
+      .filter((s) => s.paymentStatus === "paid")
+      .forEach((sale) => {
+        const existing = customerMap.get(sale.customer) || { total: 0, orders: 0 };
+        customerMap.set(sale.customer, {
+          total: existing.total + sale.total,
+          orders: existing.orders + 1,
+        });
+      });
+
+    return Array.from(customerMap.entries())
+      .map(([customer, data]) => ({ customer, ...data }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+  }, [filteredSales]);
+
+  // Pending payments (receivables)
+  const pendingPayments = useMemo(() => {
+    return filteredSales
+      .filter((s) => s.paymentStatus === "pending" && s.status !== "cancelled")
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 4);
+  }, [filteredSales]);
+
+  // Quick date range presets
+  const setQuickRange = (days: number) => {
+    setDateRange({
+      from: subDays(new Date(), days),
+      to: new Date(),
+    });
+  };
+
+  const setMonthRange = (monthsBack: number) => {
+    const targetDate = subMonths(new Date(), monthsBack);
+    setDateRange({
+      from: startOfMonth(targetDate),
+      to: monthsBack === 0 ? new Date() : endOfMonth(targetDate),
+    });
+  };
+
+  // Export handlers
+  const handleExportCSV = () => {
+    const data = {
+      headers: ["Month", "Revenue (₦)", "Expenses (₦)", "Profit (₦)"],
+      rows: monthlyData.map((m) => [m.fullMonth, m.revenue, Math.round(m.expenses), Math.round(m.profit)]),
+      title: "Financial Analytics Report",
+    };
+    exportToCSV(data, "analytics_report");
+    toast.success("CSV exported successfully");
+  };
+
+  const handleExportPDF = () => {
+    const data = {
+      headers: ["Month", "Revenue (₦)", "Expenses (₦)", "Profit (₦)"],
+      rows: monthlyData.map((m) => [
+        m.fullMonth,
+        formatCurrencyShort(m.revenue),
+        formatCurrencyShort(Math.round(m.expenses)),
+        formatCurrencyShort(Math.round(m.profit)),
+      ]),
+      title: `Financial Analytics Report (${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")})`,
+    };
+    exportToPDF(data, "analytics_report");
+    toast.success("PDF export initiated");
+  };
+
+  const handleExportSalesCSV = () => {
+    const data = {
+      headers: ["Order #", "Customer", "Date", "Total (₦)", "Status", "Payment"],
+      rows: filteredSales.map((s) => [
+        s.orderNumber,
+        s.customer,
+        s.date,
+        s.total,
+        s.status,
+        s.paymentStatus,
+      ]),
+      title: "Sales Report",
+    };
+    exportToCSV(data, "sales_report");
+    toast.success("Sales CSV exported successfully");
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Financial Analytics</h1>
-        <p className="text-muted-foreground">Track revenue, expenses, and profit performance</p>
+      {/* Header with Date Filter */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Financial Analytics</h1>
+          <p className="text-muted-foreground">Track revenue, expenses, and profit performance</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Filters */}
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(7)}>7D</Button>
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(30)}>30D</Button>
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(90)}>90D</Button>
+            <Button variant="outline" size="sm" onClick={() => setMonthRange(0)}>This Month</Button>
+          </div>
+
+          {/* Date Range Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={{ from: dateRange.from, to: dateRange.to }}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) {
+                    setDateRange({ from: range.from, to: range.to });
+                  } else if (range?.from) {
+                    setDateRange({ from: range.from, to: range.from });
+                  }
+                }}
+                numberOfMonths={2}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportCSV}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Analytics as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileText className="h-4 w-4 mr-2" />
+                Analytics as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportSalesCSV}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Sales Data as CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue (YTD)</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            <div className="flex items-center text-xs text-success">
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              +18.2% vs last year
+            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalRevenue)}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span>{metrics.paidOrders} paid orders</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses (YTD)</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
             <Receipt className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-            <div className="flex items-center text-xs text-destructive">
-              <ArrowDownRight className="h-3 w-3 mr-1" />
-              +10.5% vs last year
+            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalExpenses)}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span>~{(EXPENSE_RATIO * 100).toFixed(0)}% of revenue</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit (YTD)</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
             <PiggyBank className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalProfit)}</div>
+            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalProfit)}</div>
             <div className="flex items-center text-xs text-success">
               <TrendingUp className="h-3 w-3 mr-1" />
-              {profitMargin}% margin
+              {metrics.profitMargin}% margin
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
+            <CardTitle className="text-sm font-medium">Receivables</CardTitle>
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalReceivable - totalPayable)}</div>
-            <p className="text-xs text-muted-foreground">Net receivables</p>
+            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.receivables)}</div>
+            <p className="text-xs text-muted-foreground">Pending payments</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
-      <Tabs defaultValue="monthly" className="space-y-4">
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          <TabsTrigger value="yearly">Yearly</TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="monthly" className="space-y-4">
+        <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             {/* Revenue vs Expenses */}
             <Card>
@@ -173,38 +365,44 @@ const Analytics = () => {
                 <CardTitle>Revenue vs Expenses</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrency(v)} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                      }}
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stackId="1"
-                      stroke="hsl(var(--success))"
-                      fill="hsl(var(--success) / 0.3)"
-                      name="Revenue"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="expenses"
-                      stackId="2"
-                      stroke="hsl(var(--destructive))"
-                      fill="hsl(var(--destructive) / 0.3)"
-                      name="Expenses"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrencyShort(v)} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                        }}
+                        formatter={(value: number) => formatCurrencyShort(value)}
+                      />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stackId="1"
+                        stroke="hsl(var(--success))"
+                        fill="hsl(var(--success) / 0.3)"
+                        name="Revenue"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="expenses"
+                        stackId="2"
+                        stroke="hsl(var(--destructive))"
+                        fill="hsl(var(--destructive) / 0.3)"
+                        name="Expenses"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No data for selected date range
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -214,164 +412,184 @@ const Analytics = () => {
                 <CardTitle>Profit Trend</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrency(v)} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                      }}
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2 }}
-                      name="Profit"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrencyShort(v)} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                        }}
+                        formatter={(value: number) => formatCurrencyShort(value)}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="profit"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2 }}
+                        name="Profit"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No data for selected date range
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="yearly" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Yearly Performance Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={yearlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="year" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrency(v)} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "var(--radius)",
-                    }}
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Legend />
-                  <Bar dataKey="revenue" fill="hsl(var(--success))" name="Revenue" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" fill="hsl(var(--destructive))" name="Expenses" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="profit" fill="hsl(var(--primary))" name="Profit" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        <TabsContent value="breakdown" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Expense Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Expense Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {metrics.totalExpenses > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={expenseBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {expenseBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                          }}
+                          formatter={(value: number) => formatCurrencyShort(value)}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {expenseBreakdown.map((item) => (
+                        <div key={item.name} className="flex items-center gap-2 text-sm">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-muted-foreground">{item.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No expense data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Revenue by Month Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => formatCurrencyShort(v)} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                        }}
+                        formatter={(value: number) => formatCurrencyShort(value)}
+                      />
+                      <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Revenue" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No data for selected date range
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
-      {/* Expense Breakdown & Accounts */}
+      {/* Bottom Section */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Expense Breakdown */}
+        {/* Top Customers */}
         <Card>
           <CardHeader>
-            <CardTitle>Expense Breakdown</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowUpRight className="h-5 w-5 text-success" />
+              Top Customers
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={expenseBreakdown}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {expenseBreakdown.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                  formatter={(value: number) => formatCurrency(value)}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {expenseBreakdown.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-sm">
-                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-muted-foreground">{item.name}</span>
-                </div>
-              ))}
-            </div>
+            {topCustomers.length > 0 ? (
+              <div className="space-y-3">
+                {topCustomers.map((customer, i) => (
+                  <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0">
+                    <div>
+                      <span className="font-medium">{customer.customer}</span>
+                      <p className="text-xs text-muted-foreground">{customer.orders} orders</p>
+                    </div>
+                    <span className="font-semibold">{formatCurrencyShort(customer.total)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No customer data</p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Accounts Summary */}
+        {/* Pending Payments */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Accounts Summary
+              Pending Payments
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Receivables */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium text-success flex items-center gap-2">
-                  <ArrowUpRight className="h-4 w-4" />
-                  Receivables
-                </h4>
-                <span className="font-bold">{formatCurrency(totalReceivable)}</span>
-              </div>
-              <div className="space-y-2">
-                {accountsReceivable.slice(0, 3).map((acc, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm border-b pb-2">
-                    <span className="text-muted-foreground truncate max-w-[150px]">{acc.customer}</span>
+          <CardContent>
+            {pendingPayments.length > 0 ? (
+              <div className="space-y-3">
+                {pendingPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between border-b pb-2 last:border-0">
+                    <div>
+                      <span className="font-medium truncate max-w-[150px] block">{payment.customer}</span>
+                      <p className="text-xs text-muted-foreground">{payment.orderNumber}</p>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span>{formatCurrency(acc.amount)}</span>
-                      <Badge variant={acc.status === "overdue" ? "destructive" : "secondary"} className="text-xs">
-                        {acc.status}
+                      <span>{formatCurrencyShort(payment.total)}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        pending
                       </Badge>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Payables */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium text-destructive flex items-center gap-2">
-                  <ArrowDownRight className="h-4 w-4" />
-                  Payables
-                </h4>
-                <span className="font-bold">{formatCurrency(totalPayable)}</span>
-              </div>
-              <div className="space-y-2">
-                {accountsPayable.map((acc, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm border-b pb-2">
-                    <span className="text-muted-foreground truncate max-w-[150px]">{acc.vendor}</span>
-                    <div className="flex items-center gap-2">
-                      <span>{formatCurrency(acc.amount)}</span>
-                      <Badge variant={acc.status === "overdue" ? "destructive" : "secondary"} className="text-xs">
-                        {acc.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No pending payments</p>
+            )}
           </CardContent>
         </Card>
       </div>
