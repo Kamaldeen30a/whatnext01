@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import BottomNav from "@/components/BottomNav";
+import PullToRefresh from "@/components/PullToRefresh";
+import { useInventory } from "@/context/InventoryContext";
+import { useSales } from "@/context/SalesContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -37,6 +41,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { refreshInventory } = useInventory();
+  const { refreshSales } = useSales();
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -70,6 +76,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  const handleRefresh = async () => {
+    await Promise.all([refreshInventory(), refreshSales()]);
+    toast.success("Data refreshed");
+  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -154,7 +165,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Main Content */}
       <div
         className={cn(
-          "flex-1 transition-all duration-300 min-w-0",
+          "flex-1 transition-all duration-300 min-w-0 flex flex-col",
           // Desktop: margin for sidebar
           !isMobile && (sidebarOpen ? "lg:ml-64" : "lg:ml-20"),
           // Mobile: no margin
@@ -190,9 +201,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="p-4 sm:p-6">{children}</main>
+        {/* Page Content with Pull to Refresh on mobile */}
+        {isMobile ? (
+          <PullToRefresh onRefresh={handleRefresh} className="flex-1 pb-20">
+            <main className="p-4">{children}</main>
+          </PullToRefresh>
+        ) : (
+          <main className="p-4 sm:p-6 flex-1">{children}</main>
+        )}
       </div>
+
+      {/* Bottom Navigation for Mobile */}
+      <BottomNav />
     </div>
   );
 };

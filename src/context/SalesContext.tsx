@@ -178,6 +178,7 @@ interface SalesContextType {
   updateSale: (id: string, updates: Partial<Sale>) => void;
   deleteSale: (id: string) => void;
   getSalesByDateRange: (startDate: Date, endDate: Date) => Sale[];
+  refreshSales: () => Promise<void>;
 }
 
 const SalesContext = createContext<SalesContextType | undefined>(undefined);
@@ -212,8 +213,15 @@ export function SalesProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const refreshSales = async () => {
+    // Simulate API refresh with a delay
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    // In a real app, this would fetch fresh data from the server
+    setSales((prev) => [...prev]);
+  };
+
   return (
-    <SalesContext.Provider value={{ sales, addSale, updateSale, deleteSale, getSalesByDateRange }}>
+    <SalesContext.Provider value={{ sales, addSale, updateSale, deleteSale, getSalesByDateRange, refreshSales }}>
       {children}
     </SalesContext.Provider>
   );
