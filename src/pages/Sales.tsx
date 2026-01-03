@@ -333,12 +333,12 @@ const Sales = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
-            <p className="text-muted-foreground">Track and manage your sales orders</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Sales Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Track and manage your sales orders</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
             <DialogTrigger asChild>
@@ -347,14 +347,14 @@ const Sales = () => {
                 New Sale
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full" onPointerDownOutside={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Create New Sale</DialogTitle>
                 <DialogDescription>
                   Add customer details and select products for this order
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 py-4">
+              <div className="grid gap-4 sm:gap-6 py-4">
                 {/* Customer Details */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Customer Details</h4>
@@ -402,28 +402,28 @@ const Sales = () => {
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Add Products</h4>
                   <div className="grid gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Select value={selectedProduct} onValueChange={(value) => {
-                        setSelectedProduct(value);
-                        // Clear price when changing product
-                        setUnitPrice("");
-                      }}>
-                        <SelectTrigger className="flex-1 min-w-[200px]">
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.stock} {product.unit} available)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select value={selectedProduct} onValueChange={(value) => {
+                      setSelectedProduct(value);
+                      // Clear price when changing product
+                      setUnitPrice("");
+                    }}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} ({product.stock} {product.unit} available)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
                       <Input
                         type="number"
                         min="1"
                         placeholder="Qty"
-                        className="w-20"
+                        className="flex-1"
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
                       />
@@ -432,11 +432,11 @@ const Sales = () => {
                         min="0"
                         step="0.01"
                         placeholder="Price (₦)"
-                        className="w-28"
+                        className="flex-1"
                         value={unitPrice}
                         onChange={(e) => setUnitPrice(e.target.value)}
                       />
-                      <Button type="button" onClick={handleAddItem} size="icon">
+                      <Button type="button" onClick={handleAddItem} size="icon" className="shrink-0">
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -501,14 +501,14 @@ const Sales = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Revenue</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold">
                 ₦{stats.totalRevenue.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">From paid orders</p>
@@ -516,33 +516,33 @@ const Sales = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Orders</CardTitle>
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold">{stats.totalOrders}</div>
               <p className="text-xs text-muted-foreground">All time orders</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Order Value</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Avg. Order</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold">
                 ₦{stats.avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
-              <p className="text-xs text-muted-foreground">Per order average</p>
+              <p className="text-xs text-muted-foreground">Per order</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customers</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Customers</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.uniqueCustomers}</div>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold">{stats.uniqueCustomers}</div>
               <p className="text-xs text-muted-foreground">Unique customers</p>
             </CardContent>
           </Card>

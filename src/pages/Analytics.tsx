@@ -228,83 +228,87 @@ const Analytics = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with Date Filter */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financial Analytics</h1>
-          <p className="text-muted-foreground">Track revenue, expenses, and profit performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Financial Analytics</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Track revenue, expenses, and profit performance</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Quick Filters */}
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" onClick={() => setQuickRange(7)}>7D</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange(30)}>30D</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange(90)}>90D</Button>
-            <Button variant="outline" size="sm" onClick={() => setMonthRange(0)}>This Month</Button>
+          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(7)} className="shrink-0">7D</Button>
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(30)} className="shrink-0">30D</Button>
+            <Button variant="outline" size="sm" onClick={() => setQuickRange(90)} className="shrink-0">90D</Button>
+            <Button variant="outline" size="sm" onClick={() => setMonthRange(0)} className="shrink-0 whitespace-nowrap">This Month</Button>
           </div>
 
-          {/* Date Range Picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                selected={{ from: dateRange.from, to: dateRange.to }}
-                onSelect={(range) => {
-                  if (range?.from && range?.to) {
-                    setDateRange({ from: range.from, to: range.to });
-                  } else if (range?.from) {
-                    setDateRange({ from: range.from, to: range.from });
-                  }
-                }}
-                numberOfMonths={2}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2">
+            {/* Date Range Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none justify-start text-left">
+                  <CalendarIcon className="h-4 w-4 shrink-0" />
+                  <span className="truncate text-xs sm:text-sm">
+                    {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d")}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                <Calendar
+                  mode="range"
+                  selected={{ from: dateRange.from, to: dateRange.to }}
+                  onSelect={(range) => {
+                    if (range?.from && range?.to) {
+                      setDateRange({ from: range.from, to: range.to });
+                    } else if (range?.from) {
+                      setDateRange({ from: range.from, to: range.from });
+                    }
+                  }}
+                  numberOfMonths={1}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
 
-          {/* Export Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportCSV}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Analytics as CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                <FileText className="h-4 w-4 mr-2" />
-                Analytics as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportSalesCSV}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Sales Data as CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Analytics as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Analytics as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportSalesCSV}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Sales Data as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalRevenue)}</div>
+          <CardContent className="pt-0">
+            <div className="text-lg sm:text-2xl font-bold">{formatCurrencyShort(metrics.totalRevenue)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <span>{metrics.paidOrders} paid orders</span>
             </div>
@@ -312,12 +316,12 @@ const Analytics = () => {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Expenses</CardTitle>
             <Receipt className="h-4 w-4 text-destructive" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalExpenses)}</div>
+          <CardContent className="pt-0">
+            <div className="text-lg sm:text-2xl font-bold">{formatCurrencyShort(metrics.totalExpenses)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <span>~{(EXPENSE_RATIO * 100).toFixed(0)}% of revenue</span>
             </div>
@@ -325,12 +329,12 @@ const Analytics = () => {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs sm:text-sm font-medium">Net Profit</CardTitle>
             <PiggyBank className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.totalProfit)}</div>
+          <CardContent className="pt-0">
+            <div className="text-lg sm:text-2xl font-bold">{formatCurrencyShort(metrics.totalProfit)}</div>
             <div className="flex items-center text-xs text-success">
               <TrendingUp className="h-3 w-3 mr-1" />
               {metrics.profitMargin}% margin
@@ -339,12 +343,12 @@ const Analytics = () => {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Receivables</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs sm:text-sm font-medium">Receivables</CardTitle>
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyShort(metrics.receivables)}</div>
+          <CardContent className="pt-0">
+            <div className="text-lg sm:text-2xl font-bold">{formatCurrencyShort(metrics.receivables)}</div>
             <p className="text-xs text-muted-foreground">Pending payments</p>
           </CardContent>
         </Card>
