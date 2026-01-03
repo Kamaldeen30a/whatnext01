@@ -33,6 +33,7 @@ interface InventoryContextType {
   updateProduct: (id: string, updates: Partial<Omit<Product, "id" | "status">>) => void;
   reduceStock: (items: { productId: string; quantity: number }[]) => boolean;
   restoreStock: (items: { productId: string; quantity: number }[]) => void;
+  refreshInventory: () => Promise<void>;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -100,8 +101,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const refreshInventory = async () => {
+    // Simulate API refresh with a delay
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    // In a real app, this would fetch fresh data from the server
+    setProducts((prev) => [...prev]);
+  };
+
   return (
-    <InventoryContext.Provider value={{ products, addProduct, updateProduct, reduceStock, restoreStock }}>
+    <InventoryContext.Provider value={{ products, addProduct, updateProduct, reduceStock, restoreStock, refreshInventory }}>
       {children}
     </InventoryContext.Provider>
   );
