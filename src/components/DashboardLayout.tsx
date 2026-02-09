@@ -18,6 +18,7 @@ import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
+import GlobalSearch from "@/components/GlobalSearch";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useInventory } from "@/context/InventoryContext";
 import { useSales } from "@/context/SalesContext";
@@ -193,8 +194,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            <div className="flex items-center gap-4 ml-auto">
-              <span className="text-sm text-muted-foreground">
+            <GlobalSearch />
+            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
                 {localStorage.getItem("userRole") || "Admin"}
               </span>
             </div>
