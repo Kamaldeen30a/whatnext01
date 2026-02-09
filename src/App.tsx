@@ -77,7 +77,9 @@ const App = () => {
                 path="/sales"
                 element={
                   <ProtectedRoute>
-                    <Sales />
+                    <DashboardLayout>
+                      <Sales />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
