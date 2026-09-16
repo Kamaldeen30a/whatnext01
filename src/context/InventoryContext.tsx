@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useRef, useState, ReactNode } from "react";
 
 export interface Product {
   id: string;
@@ -8,6 +8,11 @@ export interface Product {
   unit: string;
   price: number;
   status: "in-stock" | "low-stock" | "out-of-stock";
+}
+
+export interface StockItem {
+  productId: string;
+  quantity: number;
 }
 
 const initialProducts: Product[] = [
@@ -31,8 +36,11 @@ interface InventoryContextType {
   products: Product[];
   addProduct: (product: Omit<Product, "id" | "status">) => void;
   updateProduct: (id: string, updates: Partial<Omit<Product, "id" | "status">>) => void;
-  reduceStock: (items: { productId: string; quantity: number }[]) => boolean;
-  restoreStock: (items: { productId: string; quantity: number }[]) => void;
+  reduceStock: (items: StockItem[]) => boolean;
+  restoreStock: (items: StockItem[]) => void;
+  /** Atomically swaps the stock held by an order: returns the old items and takes the new ones. */
+  applySaleStockChange: (oldItems: StockItem[], newItems: StockItem[]) => boolean;
+  getAvailableStock: (productId: string, reservedByOrder?: number) => number;
   refreshInventory: () => Promise<void>;
 }
 
@@ -40,19 +48,58 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Mirror of the latest products so several stock operations in one event
+  // handler never read a stale snapshot.
+  const productsRef = useRef<Product[]>(initialProducts);
+
+  const commit = (next: Product[]) => {
+    productsRef.current = next;
+    setProducts(next);
+  };
+
+  const toDeltas = (items: StockItem[], sign: 1 | -1) => {
+    const deltas = new Map<string, number>();
+    items.forEach((item) => {
+      deltas.set(item.productId, (deltas.get(item.productId) ?? 0) + sign * item.quantity);
+    });
+    return deltas;
+  };
+
+  /** Applies net stock deltas. Fails (without mutating) if any product would go negative. */
+  const applyDeltas = (deltas: Map<string, number>): boolean => {
+    const current = productsRef.current;
+
+    for (const [productId, delta] of deltas) {
+      const product = current.find((p) => p.id === productId);
+      if (!product) return false;
+      if (product.stock + delta < 0) return false;
+    }
+
+    commit(
+      current.map((product) => {
+        const delta = deltas.get(product.id);
+        if (!delta) return product;
+        const newStock = product.stock + delta;
+        return { ...product, stock: newStock, status: getProductStatus(newStock) };
+      })
+    );
+    return true;
+  };
 
   const addProduct = (product: Omit<Product, "id" | "status">) => {
+    const nextNumber =
+      productsRef.current.reduce((max, p) => Math.max(max, parseInt(p.id.replace(/\D/g, ""), 10) || 0), 0) + 1;
     const newProduct: Product = {
       ...product,
-      id: `P${String(products.length + 1).padStart(3, "0")}`,
+      id: `P${String(nextNumber).padStart(3, "0")}`,
       status: getProductStatus(product.stock),
     };
-    setProducts((prev) => [...prev, newProduct]);
+    commit([...productsRef.current, newProduct]);
   };
 
   const updateProduct = (id: string, updates: Partial<Omit<Product, "id" | "status">>) => {
-    setProducts((prev) =>
-      prev.map((product) => {
+    commit(
+      productsRef.current.map((product) => {
         if (product.id !== id) return product;
         const updated = { ...product, ...updates };
         updated.status = getProductStatus(updated.stock);
@@ -61,55 +108,43 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const reduceStock = (items: { productId: string; quantity: number }[]): boolean => {
-    // First check if all items have sufficient stock
-    for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product || product.stock < item.quantity) {
-        return false;
-      }
-    }
+  const reduceStock = (items: StockItem[]): boolean => applyDeltas(toDeltas(items, -1));
 
-    // If all checks pass, reduce the stock
-    setProducts((prev) =>
-      prev.map((product) => {
-        const item = items.find((i) => i.productId === product.id);
-        if (!item) return product;
-        const newStock = product.stock - item.quantity;
-        return {
-          ...product,
-          stock: newStock,
-          status: getProductStatus(newStock),
-        };
-      })
-    );
-    return true;
+  const restoreStock = (items: StockItem[]) => {
+    applyDeltas(toDeltas(items, 1));
   };
 
-  const restoreStock = (items: { productId: string; quantity: number }[]) => {
-    setProducts((prev) =>
-      prev.map((product) => {
-        const item = items.find((i) => i.productId === product.id);
-        if (!item) return product;
-        const newStock = product.stock + item.quantity;
-        return {
-          ...product,
-          stock: newStock,
-          status: getProductStatus(newStock),
-        };
-      })
-    );
+  const applySaleStockChange = (oldItems: StockItem[], newItems: StockItem[]): boolean => {
+    const deltas = toDeltas(oldItems, 1);
+    newItems.forEach((item) => {
+      deltas.set(item.productId, (deltas.get(item.productId) ?? 0) - item.quantity);
+    });
+    return applyDeltas(deltas);
+  };
+
+  const getAvailableStock = (productId: string, reservedByOrder = 0) => {
+    const product = productsRef.current.find((p) => p.id === productId);
+    return (product?.stock ?? 0) + reservedByOrder;
   };
 
   const refreshInventory = async () => {
-    // Simulate API refresh with a delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-    // In a real app, this would fetch fresh data from the server
-    setProducts((prev) => [...prev]);
+    commit([...productsRef.current]);
   };
 
   return (
-    <InventoryContext.Provider value={{ products, addProduct, updateProduct, reduceStock, restoreStock, refreshInventory }}>
+    <InventoryContext.Provider
+      value={{
+        products,
+        addProduct,
+        updateProduct,
+        reduceStock,
+        restoreStock,
+        applySaleStockChange,
+        getAvailableStock,
+        refreshInventory,
+      }}
+    >
       {children}
     </InventoryContext.Provider>
   );
