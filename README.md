@@ -1,73 +1,66 @@
-# Welcome to your Lovable project
+# WHATNEXT INVESTMENT NIGERIA LIMITED — Business Management Dashboard
 
-## Project info
+A manager dashboard for tracking products, customers, inventory, sales, logistics, and financials for a building-materials business (gypsum, paint chemicals, POP fillers).
 
-**URL**: https://lovable.dev/projects/8ba07215-8064-4131-9166-b22623538e97
+## Features
 
-## How can I edit this code?
+- **Authentication (demo mode)** — email/password sign-in stored locally; ready to swap for Supabase Auth
+- **Dashboard** — overview stats and charts
+- **Inventory** — product catalog, add/edit products, stock status, low-stock tracking, shared across the app
+- **Sales** — create/edit orders with customer details (name, address, phone), line items with manual price entry, automatic stock reduction, export to CSV/PDF
+- **Analytics** — revenue/expense/profit charts, date range filters, export reports, driven by real sales data
+- **Settings** — profile, notifications, security, appearance, company details
+- **Global search** — find products, orders, and customers from the header (Ctrl/Cmd + K)
+- **Mobile support** — responsive layout, bottom navigation, pull-to-refresh
 
-There are several ways of editing your application.
+> Note: Logistics, Documents, Production, and Notifications pages are placeholders. Data currently lives in browser memory/localStorage and resets on refresh — the Supabase backend replaces this.
 
-**Use Lovable**
+## Getting Started
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8ba07215-8064-4131-9166-b22623538e97) and start prompting.
+### Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 18+ (https://nodejs.org)
 
-**Use your preferred IDE**
+### 1. Install dependencies
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+npm install
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2. Run the app
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open http://localhost:8080 in your browser. Demo mode: sign in with any email and password.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 3. Build for production
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+npm run preview   # serve the production build locally
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Connecting Supabase (your backend)
 
-## What technologies are used for this project?
+1. Create a project at https://supabase.com (or run `supabase init` + `supabase start` locally with the Supabase CLI).
+2. Copy `.env.example` to `.env` and fill in your project URL and anon key (Supabase Dashboard → Project Settings → API).
+3. The Supabase client in `src/integrations/supabase/client.ts` reads these automatically (`isSupabaseConfigured` tells you whether it connected).
+4. Recommended table structure to start: `products`, `customers`, `sales_orders`, `sale_items`, `user_roles` (see `user_roles` guidance below for admin/manager/staff permissions).
+5. Enable Row Level Security on every table and write policies per role before exposing data to the browser.
+6. Replace the localStorage login in `src/pages/Login.tsx` with `supabase.auth.signInWithPassword()` and register an `onAuthStateChange` listener.
 
-This project is built with:
+**Never commit `.env`** — it is already listed in `.gitignore`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Tech Stack
 
-## How can I deploy this project?
+- React 18 + Vite 5 + TypeScript 5
+- Tailwind CSS v3 + shadcn/ui components
+- Recharts for analytics charts
+- React Router for navigation
+- @supabase/supabase-js (backend client, ready to wire up)
 
-Simply open [Lovable](https://lovable.dev/projects/8ba07215-8064-4131-9166-b22623538e97) and click on Share -> Publish.
+## Default Login (demo)
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Any email + password combination works in demo mode. Create a real admin account in Supabase Auth once the backend is connected.
